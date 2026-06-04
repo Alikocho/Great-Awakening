@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE GREAT AWAKENING — Crisis Operations Wargame</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&family=Cinzel:wght@400;700&display=swap');
+
+:root {
+  --ink: #0a0e14;
+  --paper: #0d1520;
+  --panel: #111c2a;
+  --border: #1e3a5f;
+  --dim: #2a4a6a;
+  --text: #c8d8e8;
+  --muted: #6a8aa8;
+  --accent: #4af0b0;
+  --ichor: #8bff6a;
+  --blood: #ff4444;
+  --gold: #d4a843;
+  --madness: #c060ff;
+  --redact: #1a2a3a;
+  --glow: rgba(74,240,176,0.15);
+  --madglow: rgba(192,96,255,0.2);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* Scanlines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ===================== LAYOUT ===================== */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* HEADER */
+header {
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(74,240,176,0.03) 0%, transparent 50%, rgba(192,96,255,0.03) 100%);
+}
+
+.header-brand {
+  display: flex;
+  flex-direction: column;
+}
+.header-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(74,240,176,0.5);
+}
+.header-sub {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.header-status {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.status-pill {
+  padding: 4px 10px;
+  border-radius: 2px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.status-pill.alert { border-color: var(--blood); color: var(--blood); background: rgba(255,68,68,0.1); }
+.status-pill.active { border-color: var(--accent); color: var(--accent); background: rgba(74,240,176,0.07); }
+.status-pill.classified { border-color: var(--gold); color: var(--gold); background: rgba(212,168,67,0.07); }
+
+#clock { font-size: 18px; color: var(--gold); font-family: 'Share Tech Mono', monospace; }
+#phase-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; }
+
+/* SCREENS */
+.screen { display: none; }
+.screen.active { display: flex; flex: 1; }
+
+/* ===================== SETUP SCREEN ===================== */
+#setup-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px 20px;
+  gap: 30px;
+}
+
+.setup-intro {
+  max-width: 720px;
+  text-align: center;
+}
+
+.briefing-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blood);
+  padding: 20px 24px;
+  max-width: 720px;
+  width: 100%;
+  position: relative;
+  font-family: 'Special Elite', cursive;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.briefing-box::before {
+  content: 'CLASSIFIED // EYES ONLY // GLOBAL THREAT ASSESSMENT';
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  background: var(--panel);
+  padding: 0 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--blood);
+  letter-spacing: 0.2em;
+}
+.redact {
+  background: var(--redact);
+  color: var(--redact);
+  user-select: none;
+  padding: 0 2px;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.redact:hover { background: var(--dim); color: var(--text); }
+
+.power-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  max-width: 900px;
+  width: 100%;
+}
+
+.power-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.power-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glow);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.power-card:hover::after, .power-card.selected::after { opacity: 1; }
+.power-card.selected { border-color: var(--accent); }
+
+.power-flag { font-size: 28px; margin-bottom: 8px; }
+.power-name { font-family: 'Cinzel', serif; font-size: 13px; color: var(--accent); margin-bottom: 4px; }
+.power-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.power-ability { font-size: 10px; color: var(--gold); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px; }
+.power-ability span { color: var(--text); }
+.power-taken { position: absolute; top: 6px; right: 8px; font-size: 9px; color: var(--muted); }
+
+.player-slot {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.player-slot-num { color: var(--muted); width: 60px; }
+.player-slot-power { color: var(--accent); flex: 1; }
+.player-slot-empty { color: var(--dim); flex: 1; font-style: italic; }
+
+.btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 10px 28px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glow);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.btn:hover::before { opacity: 1; }
+.btn:hover { text-shadow: 0 0 8px var(--accent); box-shadow: 0 0 15px rgba(74,240,176,0.2); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: var(--dim); color: var(--dim); }
+.btn.danger { border-color: var(--blood); color: var(--blood); }
+.btn.danger::before { background: rgba(255,68,68,0.1); }
+.btn.gold { border-color: var(--gold); color: var(--gold); }
+.btn.gold::before { background: rgba(212,168,67,0.1); }
+
+h2 { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; }
+h3 { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.15em; color: var(--gold); text-transform: uppercase; }
+
+/* ===================== GAME SCREEN ===================== */
+#game-screen {
+  flex-direction: column;
+  padding: 0;
+}
+
+.game-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  grid-template-rows: 1fr;
+  flex: 1;
+  gap: 0;
+  min-height: 0;
+}
+
+/* LEFT: World State Panel */
+.world-panel {
+  background: var(--paper);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-label {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Threat Meter */
+.threat-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.meter-label .name { color: var(--muted); }
+.meter-label .val { }
+.meter-bar {
+  height: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+.meter-fill {
+  height: 100%;
+  transition: width 0.8s ease;
+  position: relative;
+}
+.meter-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: white;
+  opacity: 0.6;
+}
+.meter-fill.madness { background: linear-gradient(90deg, #6030aa, var(--madness)); }
+.meter-fill.stability { background: linear-gradient(90deg, #1a5a3a, var(--ichor)); }
+.meter-fill.containment { background: linear-gradient(90deg, #1a3a5a, var(--accent)); }
+.meter-fill.awakening { background: linear-gradient(90deg, #5a1a1a, var(--blood)); }
+
+/* Event Log */
+.event-log {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.log-entry {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(30,58,95,0.5);
+  font-size: 11px;
+  line-height: 1.5;
+  animation: fadeIn 0.4s ease;
+}
+.log-entry .log-turn { color: var(--muted); font-size: 9px; margin-bottom: 2px; }
+.log-entry.event-normal { color: var(--text); }
+.log-entry.event-bad { color: #ff8080; }
+.log-entry.event-madness { color: var(--madness); }
+.log-entry.event-good { color: var(--ichor); }
+.log-entry.event-cthulhu { color: var(--blood); font-family: 'Special Elite', cursive; }
+
+/* Region Status */
+.region-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.region-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 10px;
+}
+.region-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.region-name { flex: 1; color: var(--muted); }
+.region-status { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* CENTER: Action Panel */
+.action-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.turn-header {
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.turn-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+.active-player-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(74,240,176,0.08);
+  border: 1px solid var(--accent);
+  padding: 6px 14px;
+  font-size: 11px;
+}
+.active-player-badge .flag { font-size: 18px; }
+.active-player-badge .name { color: var(--accent); }
+
+.action-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Situation Briefing */
+.situation-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  padding: 14px 16px;
+  font-family: 'Special Elite', cursive;
+  font-size: 13px;
+  line-height: 1.7;
+  position: relative;
+}
+.situation-box::before {
+  content: 'SITUATION REPORT';
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  background: var(--panel);
+  padding: 0 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+}
+
+/* Action Cards */
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.action-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.action-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.action-card:hover { border-color: var(--dim); }
+.action-card:hover::before { opacity: 1; }
+.action-card.selected { border-color: var(--accent); background: rgba(74,240,176,0.05); }
+.action-card.selected::before { opacity: 1; }
+
+.action-icon { font-size: 20px; margin-bottom: 6px; }
+.action-name { font-family: 'Cinzel', serif; font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+.action-desc { font-size: 10px; color: var(--muted); line-height: 1.5; }
+.action-cost {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cost-tag {
+  font-size: 9px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 1px;
+}
+
+/* Order Input */
+.order-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-input-section label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+textarea {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Special Elite', cursive;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  resize: vertical;
+  min-height: 90px;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 10px rgba(74,240,176,0.1); }
+textarea::placeholder { color: var(--dim); font-style: italic; }
+
+.submit-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Adjudication Display */
+.adjudication-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--madness);
+  padding: 16px;
+  font-family: 'Special Elite', cursive;
+  font-size: 13px;
+  line-height: 1.8;
+  animation: fadeIn 0.5s ease;
+  position: relative;
+}
+.adjudication-box::before {
+  content: 'ADJUDICATION — AI ORACLE';
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  background: var(--panel);
+  padding: 0 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--madness);
+  letter-spacing: 0.2em;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--accent);
+  animation: blink 0.7s infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+/* RIGHT: Powers Panel */
+.powers-panel {
+  background: var(--paper);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.player-status-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 12px;
+  position: relative;
+  transition: border-color 0.3s;
+}
+.player-status-card.active-turn { border-color: var(--accent); box-shadow: 0 0 12px rgba(74,240,176,0.1); }
+.player-status-card.acted { opacity: 0.7; }
+
+.psc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.psc-flag { font-size: 20px; }
+.psc-info { flex: 1; }
+.psc-name { font-family: 'Cinzel', serif; font-size: 11px; color: var(--accent); }
+.psc-player { font-size: 9px; color: var(--muted); }
+.psc-badge {
+  font-size: 8px;
+  padding: 2px 6px;
+  border: 1px solid;
+  letter-spacing: 0.1em;
+}
+.psc-badge.acting { border-color: var(--accent); color: var(--accent); }
+.psc-badge.done { border-color: var(--muted); color: var(--muted); }
+.psc-badge.waiting { border-color: var(--dim); color: var(--dim); }
+
+.psc-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.psc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.psc-stat-label { font-size: 8px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.psc-stat-val { font-size: 13px; }
+.psc-stat-val.high { color: var(--ichor); }
+.psc-stat-val.mid { color: var(--gold); }
+.psc-stat-val.low { color: var(--blood); }
+
+.psc-last-action {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'Special Elite', cursive;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* BOTTOM: Phase bar */
+.phase-bar {
+  background: var(--paper);
+  border-top: 1px solid var(--border);
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.phase-steps {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.phase-step {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 1px;
+  transition: background 0.5s;
+}
+.phase-step.done { background: var(--accent); }
+.phase-step.active { background: var(--gold); animation: pulse 1.5s infinite; }
+.phase-step.future { background: var(--border); }
+
+.phase-text { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+.turn-counter { font-size: 11px; color: var(--gold); }
+
+/* END SCREEN */
+#end-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 24px;
+}
+
+.end-verdict {
+  font-family: 'Cinzel', serif;
+  font-size: 32px;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+.end-verdict.humanity-survives { color: var(--ichor); text-shadow: 0 0 30px rgba(139,255,106,0.4); }
+.end-verdict.partial-victory { color: var(--gold); text-shadow: 0 0 30px rgba(212,168,67,0.4); }
+.end-verdict.cthulhu-rises { color: var(--blood); text-shadow: 0 0 30px rgba(255,68,68,0.4); }
+.end-verdict.ia-ia { color: var(--madness); text-shadow: 0 0 30px rgba(192,96,255,0.5); animation: madFlicker 0.5s infinite; }
+
+.end-narrative {
+  max-width: 680px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 24px;
+  font-family: 'Special Elite', cursive;
+  font-size: 14px;
+  line-height: 1.9;
+  text-align: center;
+}
+
+.end-scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  max-width: 800px;
+  width: 100%;
+}
+
+.score-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 14px;
+  text-align: center;
+}
+.score-card .flag { font-size: 28px; margin-bottom: 6px; }
+.score-card .power { font-family: 'Cinzel', serif; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.score-card .score { font-family: 'Cinzel', serif; font-size: 24px; }
+.score-card .rank { font-size: 10px; color: var(--muted); margin-top: 4px; }
+.score-card.rank-1 { border-color: var(--gold); }
+.score-card.rank-1 .score { color: var(--gold); }
+
+/* LOADING */
+.loading-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes madFlicker {
+  0%, 100% { opacity: 1; }
+  33% { opacity: 0.6; }
+  66% { opacity: 0.9; }
+}
+@keyframes glitch {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(2px) skewX(-1deg); }
+  75% { transform: translateX(-2px) skewX(1deg); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb { background: var(--border); }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+
+/* Section header */
+.section-header {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 1px;
+}
+
+/* Tooltip */
+.tooltip-wrap { position: relative; }
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  margin-bottom: 4px;
+}
+.tooltip-wrap:hover .tooltip { opacity: 1; }
+
+/* Player count selector */
+.count-selector {
+  display: flex;
+  gap: 8px;
+}
+.count-btn {
+  width: 40px; height: 40px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.count-btn.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(74,240,176,0.07);
+}
+.count-btn:hover { border-color: var(--dim); }
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 900px;
+  width: 100%;
+}
+
+.setup-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+
+.player-slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--ink);
+}
+.slot-num { color: var(--muted); font-size: 10px; width: 50px; }
+.slot-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  width: 120px;
+  padding: 2px 4px;
+}
+.slot-name-input:focus { outline: none; border-color: var(--accent); }
+.slot-power-select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  flex: 1;
+  cursor: pointer;
+}
+.slot-power-select:focus { outline: none; border-color: var(--accent); }
+
+.error-msg { color: var(--blood); font-size: 11px; text-align: center; }
+.success-msg { color: var(--ichor); font-size: 11px; text-align: center; }
+
+.ai-thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--madness);
+  font-size: 11px;
+  padding: 8px 0;
+}
+
+/* Cthulhu awakening animation */
+.cthulhu-pulse {
+  animation: madFlicker 0.3s infinite !important;
+}
+
+.warning-banner {
+  background: rgba(255,68,68,0.1);
+  border: 1px solid var(--blood);
+  padding: 8px 14px;
+  font-size: 11px;
+  color: var(--blood);
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Help box */
+.how-to-play {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px;
+  max-width: 720px;
+  width: 100%;
+}
+.htp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+.htp-item {
+  padding: 10px;
+  border: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.htp-item strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HEADER -->
+<header>
+  <div class="header-brand">
+    <div class="header-title">THE GREAT AWAKENING</div>
+    <div class="header-sub">Crisis Operations Wargame // Cold Alchemy Games</div>
+  </div>
+  <div class="header-status">
+    <div class="status-pill classified">Top Secret</div>
+    <div id="threat-status" class="status-pill alert">Threat Level: OMEGA</div>
+    <div class="status-pill active">AI-Adjudicated</div>
+  </div>
+  <div style="text-align:right">
+    <div id="clock">T+000:00</div>
+    <div id="phase-label">AWAITING DEPLOYMENT</div>
+  </div>
+</header>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="screen active">
+
+  <div class="setup-intro">
+    <h2 style="font-size:22px; margin-bottom: 10px;">☩ THE GREAT AWAKENING ☩</h2>
+    <p style="color:var(--muted); font-size:12px; letter-spacing:0.1em;">A CRISIS WARGAME FOR 2-5 PLAYERS // AI-ADJUDICATED // SINGLE SESSION</p>
+  </div>
+
+  <div class="briefing-box">
+    <p>
+      <strong style="color:var(--blood)">HOUR 00:00.</strong> Deep-sea seismic sensors across the Pacific rim have detected coordinated anomalous activity. 
+      <span class="redact" title="CLICK TO REVEAL">███████████████████████████████</span> 
+      have begun manifesting across coastal cities simultaneously. Estimated 
+      <span class="redact">█████████</span> 
+      casualties in the first six hours. Intelligence confirms: <em>This is not geological. This is not terrorism.</em>
+    </p>
+    <br>
+    <p>
+      Something vast and 
+      <span class="redact">ancient beyond comprehension</span> 
+      stirs beneath R'lyeh. Its followers — dormant for millennia — move openly now through the streets of 
+      <span class="redact">New York, Shanghai, Moscow</span>. 
+      World governments have 72 hours before full manifestation becomes irreversible.
+    </p>
+    <br>
+    <p style="color:var(--gold)">Each power must decide: What do you save? What do you sacrifice? And who will lead humanity into whatever comes next?</p>
+  </div>
+
+  <div class="how-to-play">
+    <h3>HOW TO PLAY</h3>
+    <div class="htp-grid">
+      <div class="htp-item">
+        <strong>🎯 OBJECTIVE</strong>
+        Survive the Great Awakening. Maximize your nation's Stability, minimize global Madness, and contain Cthulhu's reach. Each power has unique goals — cooperation and betrayal both serve.
+      </div>
+      <div class="htp-item">
+        <strong>⚡ EACH TURN</strong>
+        Read the situation briefing. Choose an action type. Write your orders in plain language. The AI Oracle adjudicates outcomes, updates world state, and narrates consequences for all powers.
+      </div>
+      <div class="htp-item">
+        <strong>🏆 VICTORY</strong>
+        After 4 turns (one full crisis cycle), scores are tallied. Global survival depends on collective choices — but individual rankings determine who shaped the post-Awakening world.
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-grid">
+    <!-- Player count -->
+    <div class="setup-section">
+      <h3>01 — SELECT PLAYER COUNT</h3>
+      <div style="margin-top:12px; color:var(--muted); font-size:11px; margin-bottom:12px;">How many commanders will face the Awakening?</div>
+      <div class="count-selector" id="count-selector">
+        <button class="count-btn" onclick="setPlayerCount(2)">2</button>
+        <button class="count-btn selected" onclick="setPlayerCount(3)">3</button>
+        <button class="count-btn" onclick="setPlayerCount(4)">4</button>
+        <button class="count-btn" onclick="setPlayerCount(5)">5</button>
+      </div>
+      <div style="margin-top:16px;">
+        <div class="section-header">ASSIGNED COMMANDS</div>
+        <div class="player-slots-list" id="player-slots-list">
+          <!-- slots rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Power cards -->
+    <div class="setup-section">
+      <h3>02 — ASSIGN POWERS</h3>
+      <div style="margin-top:12px; color:var(--muted); font-size:11px; margin-bottom:12px;">Each power has a unique Special Action. Click cards for details.</div>
+      <div class="power-select-grid" id="power-select-grid">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+    <div id="setup-error" class="error-msg" style="display:none;"></div>
+    <button class="btn gold" onclick="startGame()" id="start-btn">⚠ INITIATE CRISIS PROTOCOL ⚠</button>
+    <div style="font-size:10px; color:var(--muted); margin-top:4px;">All players must be assigned before deployment</div>
+  </div>
+
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen">
+  <div class="game-layout" style="flex:1">
+
+    <!-- LEFT PANEL -->
+    <div class="world-panel">
+      <div class="panel-label">// GLOBAL STATUS — REAL-TIME</div>
+
+      <div>
+        <div class="section-header">CRISIS INDICES</div>
+        <div class="threat-meter" id="threat-meters">
+          <div class="meter-row">
+            <div class="meter-label">
+              <span class="name">⚠ AWAKENING LEVEL</span>
+              <span class="val" id="val-awakening" style="color:var(--blood)">12%</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill awakening" id="bar-awakening" style="width:12%"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">
+              <span class="name">🧠 GLOBAL MADNESS</span>
+              <span class="val" id="val-madness" style="color:var(--madness)">8%</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill madness" id="bar-madness" style="width:8%"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">
+              <span class="name">🛡 CONTAINMENT</span>
+              <span class="val" id="val-containment" style="color:var(--accent)">75%</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill containment" id="bar-containment" style="width:75%"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">
+              <span class="name">🌐 GLOBAL STABILITY</span>
+              <span class="val" id="val-stability" style="color:var(--ichor)">68%</span>
+            </div>
+            <div class="meter-bar"><div class="meter-fill stability" id="bar-stability" style="width:68%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-header">CRISIS ZONES</div>
+        <div class="region-grid" id="region-grid">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+        <div class="section-header">OPERATIONS LOG</div>
+        <div class="event-log" id="event-log">
+          <div class="log-entry event-cthulhu">
+            <div class="log-turn">SYSTEM INIT</div>
+            Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.
+          </div>
+          <div class="log-entry event-bad">
+            <div class="log-turn">T+00:00</div>
+            Mass casualty events confirmed in 14 coastal cities. Cause: unknown.
+          </div>
+          <div class="log-entry event-normal">
+            <div class="log-turn">T+00:01</div>
+            Crisis Operations wargame initiated. All commands standing by.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER PANEL -->
+    <div class="action-panel">
+      <div class="turn-header">
+        <div>
+          <div class="turn-title" id="turn-title">TURN 1 — INITIAL RESPONSE</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;" id="turn-subtitle">Issue orders for all commands. AI Oracle adjudicates outcomes.</div>
+        </div>
+        <div id="active-badge" class="active-player-badge">
+          <span class="flag" id="active-flag"></span>
+          <span class="name" id="active-name">Awaiting...</span>
+        </div>
+      </div>
+
+      <div class="action-content" id="action-content">
+        <!-- Situation -->
+        <div class="situation-box" id="situation-box">
+          Seismic sensors in the Pacific have gone dark. Coastal radar installations in Hawaii, Japan, and New Zealand are reporting entities emerging from the sea. Military units dispatched to investigate have ceased communication. Deep-state analysts confirm: this matches the Necronomicon Scenario. The world waits for leadership.
+        </div>
+
+        <!-- Action selection -->
+        <div>
+          <div class="section-header">SELECT ACTION TYPE</div>
+          <div class="actions-grid" id="actions-grid">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Order input -->
+        <div class="order-input-section" id="order-input-section">
+          <label>YOUR ORDERS — Speak plainly. The Oracle hears all.</label>
+          <textarea id="order-textarea" placeholder="Describe your nation's actions in detail. The more specific, the better. What forces are you committing? What are your objectives? What are you willing to sacrifice?"></textarea>
+          <div class="submit-row">
+            <button class="btn" id="submit-btn" onclick="submitOrders()">▶ SUBMIT ORDERS</button>
+            <div id="submit-status" style="font-size:11px; color:var(--muted);"></div>
+          </div>
+        </div>
+
+        <!-- Adjudication result -->
+        <div id="adjudication-container" style="display:none;">
+          <div class="adjudication-box" id="adjudication-box">
+            <span id="adjudication-text"></span>
+            <span class="typing-cursor" id="typing-cursor" style="display:none;"></span>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:12px;" id="post-adj-buttons">
+            <button class="btn" onclick="nextPlayer()" id="next-player-btn">CONTINUE →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase bar -->
+      <div class="phase-bar">
+        <div class="phase-text">TURN PROGRESS:</div>
+        <div class="phase-steps" id="phase-steps"></div>
+        <div class="turn-counter" id="turn-counter">TURN 1 / 4</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="powers-panel">
+      <div class="panel-label">// ACTIVE COMMANDS</div>
+      <div id="player-status-list">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- END SCREEN -->
+<div id="end-screen" class="screen">
+  <div class="end-verdict" id="end-verdict">—</div>
+  <div class="end-narrative" id="end-narrative">Loading final assessment...</div>
+  <div>
+    <div class="section-header" style="text-align:center; margin-bottom:12px;">COMMAND PERFORMANCE</div>
+    <div class="end-scores" id="end-scores"></div>
+  </div>
+  <div style="display:flex; gap:12px; margin-top:16px;">
+    <button class="btn gold" onclick="location.reload()">⟳ NEW CRISIS</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ===================== GAME DATA =====================
+
+const POWERS = {
+  usa: {
+    flag: '🇺🇸',
+    name: 'United States',
+    abbr: 'USA',
+    desc: 'Military superpower with global projection capability. Domestic political constraints limit bold action.',
+    ability: 'FULL SPECTRUM DOMINANCE',
+    abilityDesc: 'Once per game: deploy military assets anywhere globally with no Stability cost',
+    color: '#4af0b0',
+    stats: { stability: 72, influence: 85, intel: 78, military: 95 }
+  },
+  china: {
+    flag: '🇨🇳',
+    name: "People's Republic of China",
+    abbr: 'PRC',
+    desc: 'Economic and industrial powerhouse. Can mobilize resources at unmatched scale and speed.',
+    ability: 'IRON MOBILIZATION',
+    abilityDesc: 'Once per game: immediately stabilize any two regions simultaneously',
+    color: '#ff6060',
+    stats: { stability: 68, influence: 80, intel: 72, military: 88 }
+  },
+  russia: {
+    flag: '🇷🇺',
+    name: 'Russian Federation',
+    abbr: 'RUS',
+    desc: 'Asymmetric capability with deep intelligence networks. Willing to pay costs others are not.',
+    ability: 'MASKIROVKA',
+    abilityDesc: 'Once per game: conduct a covert action that cannot be attributed, with double effect',
+    color: '#c060ff',
+    stats: { stability: 60, influence: 70, intel: 92, military: 80 }
+  },
+  eu: {
+    flag: '🇪🇺',
+    name: 'European Union',
+    abbr: 'EU',
+    desc: 'Coalition of democracies with vast economic resources. Consensus-driven but resilient.',
+    ability: 'SOLIDARITY PROTOCOL',
+    abilityDesc: 'Once per game: any action you take also benefits one allied power at no cost to them',
+    color: '#4a80ff',
+    stats: { stability: 75, influence: 78, intel: 65, military: 70 }
+  },
+  un: {
+    flag: '🇺🇳',
+    name: 'United Nations',
+    abbr: 'UN',
+    desc: 'Diplomatic and humanitarian coordination. Unique ability to broker deals no power can alone.',
+    ability: 'RESOLUTION OMEGA',
+    abilityDesc: 'Once per game: compel all powers to cooperate on one action, sharing costs and doubling outcome',
+    color: '#d4a843',
+    stats: { stability: 70, influence: 90, intel: 60, military: 30 }
+  }
+};
+
+const ACTIONS = [
+  {
+    id: 'military',
+    icon: '⚔️',
+    name: 'Military Operation',
+    desc: 'Deploy forces to suppress cultists, seal a manifestation point, or establish a containment perimeter.',
+    costTags: ['+Containment', '±Stability', '-Diplomacy'],
+    systemHint: 'military and containment focused'
+  },
+  {
+    id: 'intel',
+    icon: '🔍',
+    name: 'Intelligence Operation',
+    desc: 'Infiltrate cult networks, decode eldritch communications, or eliminate key cultist leadership covertly.',
+    costTags: ['+Intel', '-Madness', '±Attribution'],
+    systemHint: 'intelligence and covert operations'
+  },
+  {
+    id: 'diplomacy',
+    icon: '🤝',
+    name: 'Diplomatic Initiative',
+    desc: 'Coordinate with other powers, broker information sharing, or establish joint crisis response.',
+    costTags: ['+Cooperation', '±Stability', '+Influence'],
+    systemHint: 'diplomatic coordination and alliance building'
+  },
+  {
+    id: 'humanitarian',
+    icon: '🏥',
+    name: 'Humanitarian Response',
+    desc: 'Evacuate populations, establish psychological support centers, maintain civilian morale and order.',
+    costTags: ['+Stability', '-Madness', '-Military'],
+    systemHint: 'humanitarian aid and civilian protection'
+  },
+  {
+    id: 'research',
+    icon: '📖',
+    name: 'Forbidden Research',
+    desc: 'Unlock eldritch knowledge to better combat the threat — at serious risk to researcher sanity.',
+    costTags: ['+Knowledge', '+Madness', '±Containment'],
+    systemHint: 'dangerous research into the Mythos, high risk high reward'
+  },
+  {
+    id: 'special',
+    icon: '⚡',
+    name: 'Special Action',
+    desc: 'Invoke your power\'s unique capability. One use only per game.',
+    costTags: ['UNIQUE', 'ONE USE'],
+    systemHint: 'special unique power ability'
+  }
+];
+
+const REGIONS = [
+  { id: 'pacific', name: 'Pacific Rim', status: 'critical', dot: '#ff4444' },
+  { id: 'northatlantic', name: 'North Atlantic', status: 'threatened', dot: '#ff8040' },
+  { id: 'europe', name: 'Central Europe', status: 'stable', dot: '#4af0b0' },
+  { id: 'middleeast', name: 'Middle East', status: 'threatened', dot: '#ff8040' },
+  { id: 'eastasia', name: 'East Asia', status: 'critical', dot: '#ff4444' },
+  { id: 'northamerica', name: 'North America', status: 'threatened', dot: '#ff8040' },
+  { id: 'russia', name: 'Central Russia', status: 'stable', dot: '#4af0b0' },
+  { id: 'rlyeh', name: 'R\'lyeh (Pacific)', status: 'NEXUS', dot: '#c060ff' }
+];
+
+// ===================== GAME STATE =====================
+
+let state = {
+  players: [],        // {name, powerId, score, stability, specialUsed, lastAction}
+  currentPlayerIdx: 0,
+  currentTurn: 1,
+  maxTurns: 4,
+  globalState: {
+    awakening: 12,
+    madness: 8,
+    containment: 75,
+    stability: 68
+  },
+  regions: JSON.parse(JSON.stringify(REGIONS)),
+  log: [],
+  turnOrders: [],     // collected orders for the current turn
+  turnPhase: 'ordering',  // ordering | adjudicating | advancing
+  selectedAction: null,
+  specialUsed: {},
+  adjudicationHistory: []  // for context
+};
+
+let playerCount = 3;
+let playerAssignments = []; // [{name, powerId}]
+
+// ===================== SETUP =====================
+
+function setPlayerCount(n) {
+  playerCount = n;
+  document.querySelectorAll('.count-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', [2,3,4,5][i] === n);
+  });
+  renderPlayerSlots();
+}
+
+function renderPlayerSlots() {
+  const list = document.getElementById('player-slots-list');
+  list.innerHTML = '';
+  const usedPowers = new Set();
+
+  for (let i = 0; i < playerCount; i++) {
+    const current = playerAssignments[i] || { name: `Player ${i+1}`, powerId: '' };
+    if (current.powerId) usedPowers.add(current.powerId);
+
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+    row.innerHTML = `
+      <span class="slot-num">CMD ${i+1}</span>
+      <input class="slot-name-input" type="text" placeholder="Codename..." value="${current.name || ''}" 
+             onchange="updateSlot(${i}, 'name', this.value)">
+      <select class="slot-power-select" onchange="updateSlot(${i}, 'power', this.value)">
+        <option value="">— Select Power —</option>
+        ${Object.entries(POWERS).map(([id, p]) => 
+          `<option value="${id}" ${current.powerId === id ? 'selected' : ''}>${p.flag} ${p.abbr}</option>`
+        ).join('')}
+      </select>
+    `;
+    list.appendChild(row);
+  }
+}
+
+function updateSlot(idx, field, value) {
+  if (!playerAssignments[idx]) playerAssignments[idx] = { name: `Player ${idx+1}`, powerId: '' };
+  if (field === 'name') playerAssignments[idx].name = value;
+  if (field === 'power') playerAssignments[idx].powerId = value;
+}
+
+function renderPowerGrid() {
+  const grid = document.getElementById('power-select-grid');
+  grid.innerHTML = Object.entries(POWERS).map(([id, p]) => `
+    <div class="power-card" id="pcard-${id}" onclick="selectPowerInfo('${id}')">
+      <div class="power-flag">${p.flag}</div>
+      <div class="power-name">${p.name}</div>
+      <div class="power-desc">${p.desc}</div>
+      <div class="power-ability">⚡ ${p.ability}: <span>${p.abilityDesc}</span></div>
+    </div>
+  `).join('');
+}
+
+function selectPowerInfo(id) {
+  document.querySelectorAll('.power-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`pcard-${id}`).classList.add('selected');
+}
+
+function startGame() {
+  // Validate
+  const assignments = [];
+  const usedPowers = new Set();
+  const usedNames = new Set();
+  const errEl = document.getElementById('setup-error');
+
+  for (let i = 0; i < playerCount; i++) {
+    const pa = playerAssignments[i];
+    if (!pa || !pa.powerId) {
+      errEl.textContent = `Player ${i+1} must select a power.`;
+      errEl.style.display = 'block';
+      return;
+    }
+    if (usedPowers.has(pa.powerId)) {
+      errEl.textContent = `Two players cannot control the same power.`;
+      errEl.style.display = 'block';
+      return;
+    }
+    usedPowers.add(pa.powerId);
+    assignments.push({ name: pa.name || `Player ${i+1}`, powerId: pa.powerId });
+  }
+  errEl.style.display = 'none';
+
+  // Build state.players
+  state.players = assignments.map(a => ({
+    name: a.name,
+    powerId: a.powerId,
+    score: 50,
+    stability: POWERS[a.powerId].stats.stability,
+    specialUsed: false,
+    lastAction: null,
+    lastResult: null
+  }));
+
+  showScreen('game-screen');
+  initGameUI();
+  startTurn();
+}
+
+// ===================== UI HELPERS =====================
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function addLog(text, type = 'event-normal') {
+  state.log.push({ text, type, turn: state.currentTurn });
+  const log = document.getElementById('event-log');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.innerHTML = `<div class="log-turn">T+${String(state.currentTurn).padStart(2,'0')}:${String(state.currentPlayerIdx).padStart(2,'0')}</div>${text}`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateMeters() {
+  const g = state.globalState;
+  ['awakening','madness','containment','stability'].forEach(k => {
+    const val = Math.max(0, Math.min(100, g[k]));
+    document.getElementById(`bar-${k}`).style.width = val + '%';
+    document.getElementById(`val-${k}`).textContent = Math.round(val) + '%';
+    g[k] = val;
+  });
+
+  // Update threat pill
+  const aw = g.awakening;
+  const pill = document.getElementById('threat-status');
+  if (aw > 75) { pill.textContent = 'THREAT: EXTINCTION'; pill.style.borderColor='#c060ff'; pill.style.color='#c060ff'; }
+  else if (aw > 50) { pill.textContent = 'THREAT: CRITICAL'; pill.style.borderColor='#ff4444'; }
+  else if (aw > 25) { pill.textContent = 'THREAT: SEVERE'; pill.style.borderColor='#ff8040'; pill.style.color='#ff8040'; }
+  else { pill.textContent = 'THREAT: ELEVATED'; }
+}
+
+function updateRegions() {
+  const grid = document.getElementById('region-grid');
+  grid.innerHTML = state.regions.map(r => {
+    const colorMap = { 'stable': '#4af0b0', 'threatened': '#ff8040', 'critical': '#ff4444', 'fallen': '#880000', 'NEXUS': '#c060ff' };
+    return `<div class="region-row">
+      <div class="region-dot" style="background:${colorMap[r.status] || '#666'};"></div>
+      <span class="region-name">${r.name}</span>
+      <span class="region-status" style="color:${colorMap[r.status] || '#666'}">${r.status}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderPlayerStatuses() {
+  const list = document.getElementById('player-status-list');
+  list.innerHTML = state.players.map((p, i) => {
+    const power = POWERS[p.powerId];
+    const isActive = i === state.currentPlayerIdx && state.turnPhase === 'ordering';
+    const hasActed = state.turnOrders.some(o => o.playerIdx === i);
+
+    let badge = hasActed 
+      ? '<span class="psc-badge done">SUBMITTED</span>'
+      : (isActive ? '<span class="psc-badge acting">ACTING</span>' : '<span class="psc-badge waiting">WAITING</span>');
+
+    const scoreColor = p.score >= 65 ? 'high' : p.score >= 40 ? 'mid' : 'low';
+    const stabColor = p.stability >= 65 ? 'high' : p.stability >= 40 ? 'mid' : 'low';
+
+    return `<div class="player-status-card ${isActive ? 'active-turn' : ''} ${hasActed ? 'acted' : ''}">
+      <div class="psc-header">
+        <div class="psc-flag">${power.flag}</div>
+        <div class="psc-info">
+          <div class="psc-name">${power.abbr}</div>
+          <div class="psc-player">${p.name}</div>
+        </div>
+        ${badge}
+      </div>
+      <div class="psc-stats">
+        <div class="psc-stat">
+          <div class="psc-stat-label">Score</div>
+          <div class="psc-stat-val ${scoreColor}">${Math.round(p.score)}</div>
+        </div>
+        <div class="psc-stat">
+          <div class="psc-stat-label">Stability</div>
+          <div class="psc-stat-val ${stabColor}">${Math.round(p.stability)}%</div>
+        </div>
+        <div class="psc-stat">
+          <div class="psc-stat-label">Special</div>
+          <div class="psc-stat-val ${p.specialUsed ? 'low' : 'high'}">${p.specialUsed ? 'USED' : 'READY'}</div>
+        </div>
+      </div>
+      ${p.lastResult ? `<div class="psc-last-action">"${p.lastResult.substring(0,80)}..."</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updatePhaseBar() {
+  const steps = document.getElementById('phase-steps');
+  const total = state.players.length;
+  const done = state.turnOrders.filter(o => o.turn === state.currentTurn).length;
+  steps.innerHTML = Array.from({length: total}, (_, i) => {
+    let cls = i < done ? 'done' : (i === done ? 'active' : 'future');
+    return `<div class="phase-step ${cls}"></div>`;
+  }).join('');
+  document.getElementById('turn-counter').textContent = `TURN ${state.currentTurn} / ${state.maxTurns}`;
+}
+
+function initGameUI() {
+  renderRegions();
+  updateMeters();
+  updateRegions();
+  renderPlayerStatuses();
+
+  // Build actions grid
+  const grid = document.getElementById('actions-grid');
+  grid.innerHTML = ACTIONS.map(a => `
+    <div class="action-card" id="ac-${a.id}" onclick="selectAction('${a.id}')">
+      <div class="action-icon">${a.icon}</div>
+      <div class="action-name">${a.name}</div>
+      <div class="action-desc">${a.desc}</div>
+      <div class="action-cost">${a.costTags.map(t => `<span class="cost-tag">${t}</span>`).join('')}</div>
+    </div>
+  `).join('');
+
+  startClock();
+}
+
+function renderRegions() {
+  updateRegions();
+}
+
+let clockInterval;
+let clockSeconds = 0;
+function startClock() {
+  clearInterval(clockInterval);
+  clockInterval = setInterval(() => {
+    clockSeconds++;
+    const h = String(Math.floor(clockSeconds/3600)).padStart(3,'0');
+    const m = String(Math.floor((clockSeconds%3600)/60)).padStart(2,'0');
+    const s = String(clockSeconds%60).padStart(2,'0');
+    document.getElementById('clock').textContent = `T+${h}:${m}`;
+  }, 1000);
+}
+
+function selectAction(id) {
+  const player = state.players[state.currentPlayerIdx];
+  if (id === 'special' && player.specialUsed) {
+    document.getElementById('submit-status').textContent = '⚠ Special Action already used this game.';
+    return;
+  }
+  state.selectedAction = id;
+  document.querySelectorAll('.action-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`ac-${id}`).classList.add('selected');
+  document.getElementById('submit-status').textContent = '';
+  const action = ACTIONS.find(a => a.id === id);
+  const ta = document.getElementById('order-textarea');
+  ta.placeholder = `[${action.name.toUpperCase()}] Describe your specific orders...`;
+}
+
+// ===================== TURN MANAGEMENT =====================
+
+function startTurn() {
+  const turnSituations = [
+    "Hour 6: The first major manifestations have occurred. Entities emerged from the Pacific near Hawaii and coastal Japan. Military forces are engaging with... unclear results. Cultist activity has tripled in all major cities. The R'lyeh Depth Signal has increased 340% in the last hour. Your intelligence teams believe a window of 48 hours remains before manifestation becomes self-sustaining.",
+    "Hour 18: Communications with Pacific naval assets have become sporadic. Three cities are reporting mass civilian panic and breakdown of civil order. A partial translation of recovered cultist texts suggests a 'Resonance Cascade' is underway — each successful manifestation makes the next easier. Some governments are beginning to question whether full disclosure is survivable.",
+    "Hour 36: The entity count in public view has crossed a threshold. Global media cannot suppress the footage. Panic is spreading faster than any of your humanitarian efforts. However, intelligence suggests that the R'lyeh Coordinates may allow targeted action against the nexus itself. The Awakening is still technically reversible — but the window is closing. Hard choices must be made.",
+    "Hour 60: Final phase. R'lyeh has partially breached the surface. The entity hierarchy is becoming visible — organized, purposeful. Cthulhu's full consciousness has not yet manifested, but its influence saturates coastal regions. This is the last turn. Every decision now shapes not just survival, but what civilization emerges from the other side of this crisis."
+  ];
+
+  const turnNames = ['INITIAL RESPONSE', 'ESCALATION', 'CRITICAL THRESHOLD', 'FINAL RECKONING'];
+
+  document.getElementById('turn-title').textContent = `TURN ${state.currentTurn} — ${turnNames[state.currentTurn-1]}`;
+  document.getElementById('situation-box').textContent = turnSituations[state.currentTurn-1];
+  document.getElementById('phase-label').textContent = `TURN ${state.currentTurn}: ${turnNames[state.currentTurn-1]}`;
+
+  state.currentPlayerIdx = 0;
+  state.turnOrders = state.turnOrders.filter(o => o.turn !== state.currentTurn);
+  state.turnPhase = 'ordering';
+  state.selectedAction = null;
+
+  setActivePlayer(0);
+}
+
+function setActivePlayer(idx) {
+  state.currentPlayerIdx = idx;
+  const player = state.players[idx];
+  const power = POWERS[player.powerId];
+
+  document.getElementById('active-flag').textContent = power.flag;
+  document.getElementById('active-name').textContent = `${power.abbr} — ${player.name}`;
+
+  document.getElementById('turn-subtitle').textContent =
+    `${power.name} is issuing orders. Choose action type and write your orders.`;
+
+  // Reset action selection
+  state.selectedAction = null;
+  document.querySelectorAll('.action-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('order-textarea').value = '';
+  document.getElementById('adjudication-container').style.display = 'none';
+  document.getElementById('submit-status').textContent = '';
+
+  // Disable special if used
+  if (player.specialUsed) {
+    document.getElementById('ac-special').style.opacity = '0.4';
+  } else {
+    document.getElementById('ac-special').style.opacity = '1';
+  }
+
+  updatePhaseBar();
+  renderPlayerStatuses();
+}
+
+async function submitOrders() {
+  if (!state.selectedAction) {
+    document.getElementById('submit-status').textContent = '⚠ Select an action type first.';
+    return;
+  }
+  const orderText = document.getElementById('order-textarea').value.trim();
+  if (orderText.length < 10) {
+    document.getElementById('submit-status').textContent = '⚠ Orders must be more specific (min. 10 characters).';
+    return;
+  }
+
+  const player = state.players[state.currentPlayerIdx];
+  const power = POWERS[player.powerId];
+  const action = ACTIONS.find(a => a.id === state.selectedAction);
+
+  // Store order
+  state.turnOrders.push({
+    turn: state.currentTurn,
+    playerIdx: state.currentPlayerIdx,
+    playerId: player.powerId,
+    playerName: player.name,
+    action: state.selectedAction,
+    orders: orderText
+  });
+
+  // Mark special used
+  if (state.selectedAction === 'special') {
+    state.players[state.currentPlayerIdx].specialUsed = true;
+  }
+
+  // Show thinking state
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('submit-status').innerHTML = '<span class="loading-spinner"></span> Oracle is adjudicating...';
+  document.getElementById('adjudication-container').style.display = 'block';
+  document.getElementById('adjudication-text').textContent = '';
+  document.getElementById('typing-cursor').style.display = 'inline-block';
+  document.getElementById('post-adj-buttons').style.display = 'none';
+
+  try {
+    const result = await callOracle(player, power, action, orderText);
+    await typewriterEffect(result.narrative, 'adjudication-text');
+    document.getElementById('typing-cursor').style.display = 'none';
+
+    // Apply state changes
+    applyStateChanges(result, state.currentPlayerIdx);
+
+    player.lastResult = result.narrative;
+    addLog(`${power.flag} ${power.abbr}: ${result.shortLog}`, result.logType || 'event-normal');
+
+    updateMeters();
+    updateRegions();
+    renderPlayerStatuses();
+    updatePhaseBar();
+
+    document.getElementById('post-adj-buttons').style.display = 'flex';
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-status').textContent = '';
+
+    // Check for end condition
+    if (state.globalState.awakening >= 100) {
+      setTimeout(() => triggerEndGame('cthulhu'), 1500);
+    }
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('typing-cursor').style.display = 'none';
+    document.getElementById('adjudication-text').textContent = '[ORACLE OFFLINE — Network error. Please try again.]';
+    document.getElementById('post-adj-buttons').style.display = 'flex';
+    document.getElementById('submit-btn').disabled = false;
+  }
+}
+
+function nextPlayer() {
+  const nextIdx = state.currentPlayerIdx + 1;
+
+  if (nextIdx >= state.players.length) {
+    // All players have acted — end of turn
+    endOfTurn();
+  } else {
+    setActivePlayer(nextIdx);
+  }
+}
+
+function endOfTurn() {
+  // Automatic Awakening progression
+  const baseAwakeningIncrease = [8, 12, 15, 20][state.currentTurn - 1];
+  state.globalState.awakening += baseAwakeningIncrease;
+  state.globalState.madness += 5;
+
+  addLog(`⚠ Awakening Level increases by ${baseAwakeningIncrease}% as the Resonance Cascade continues.`, 'event-bad');
+
+  if (state.currentTurn >= state.maxTurns) {
+    setTimeout(() => triggerEndGame(), 1000);
+  } else {
+    state.currentTurn++;
+    setTimeout(() => startTurn(), 500);
+  }
+}
+
+// ===================== AI ORACLE =====================
+
+async function callOracle(player, power, action, orders) {
+  const g = state.globalState;
+  const recentHistory = state.adjudicationHistory.slice(-4).map(h =>
+    `Turn ${h.turn}: ${h.power} (${h.action}) — ${h.summary}`
+  ).join('\n');
+
+  const allPlayersContext = state.players.map(p => {
+    const pw = POWERS[p.powerId];
+    return `${pw.name} (${p.name}): Stability ${Math.round(p.stability)}%, Score ${Math.round(p.score)}`;
+  }).join('\n');
+
+  const regionContext = state.regions.map(r => `${r.name}: ${r.status}`).join(', ');
+
+  const systemPrompt = `You are the Oracle — the AI adjudicator for THE GREAT AWAKENING, a crisis wargame set during the first 72 hours of Cthulhu's awakening. You narrate outcomes with the voice of a classified intelligence briefing crossed with Lovecraftian dread. Be vivid, specific, and consequential. Never be generic.
+
+WORLD STATE:
+- Awakening Level: ${Math.round(g.awakening)}% (100% = Cthulhu fully manifests, game ends)
+- Global Madness: ${Math.round(g.madness)}%
+- Containment: ${Math.round(g.containment)}%
+- Global Stability: ${Math.round(g.stability)}%
+- Regions: ${regionContext}
+
+ALL COMMANDS:
+${allPlayersContext}
+
+RECENT EVENTS:
+${recentHistory || 'Game beginning — no prior events.'}
+
+ACTING POWER: ${power.name} (player: ${player.name})
+Player stability: ${Math.round(player.stability)}%
+Special ability: ${power.ability} — ${power.abilityDesc}
+Special ability used: ${player.specialUsed}
+
+ACTION TYPE: ${action.name} (${action.systemHint})
+
+PLAYER'S ORDERS: "${orders}"
+
+ADJUDICATION RULES:
+- Evaluate the orders based on feasibility, the world state, and narrative logic
+- Orders can partially succeed, fully succeed, backfire, or have unintended consequences
+- Military actions in high-Awakening areas risk Madness exposure
+- Forbidden Research always increases Madness but may yield breakthroughs
+- Diplomatic actions require other powers to cooperate — less reliable but no stability cost
+- The Mythos entities are intelligent, adaptive, and not fully comprehensible
+- Be specific: name locations, commanders, incidents, eldritch phenomena
+- Reference Lovecraftian Mythos elements (cultists, Deep Ones, Shoggoths, Star-spawn, etc.)
+
+RESPOND AS VALID JSON ONLY (no markdown):
+{
+  "narrative": "2-4 paragraph adjudication narrating what happens. Vivid, specific, Lovecraftian. 150-250 words.",
+  "shortLog": "1 sentence summary for the operations log",
+  "logType": "event-normal | event-bad | event-good | event-madness | event-cthulhu",
+  "stateChanges": {
+    "awakening": <number, -10 to +15, delta>,
+    "madness": <number, -5 to +10, delta>,
+    "containment": <number, -15 to +15, delta>,
+    "stability": <number, -10 to +10, delta>
+  },
+  "playerChanges": {
+    "scoredelta": <number, -15 to +15>,
+    "stabilitydelta": <number, -10 to +10>
+  },
+  "regionUpdate": "<region id from: pacific/northatlantic/europe/middleeast/eastasia/northamerica/russia/rlyeh> <new status: stable/threatened/critical/fallen>",
+  "complication": "Optional 1 sentence complication or revelation for future turns"
+}`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: systemPrompt }]
+    })
+  });
+
+  const data = await response.json();
+  const raw = data.content[0].text;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch (e) {
+    // Fallback parse attempt
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      parsed = JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error('Oracle returned unparseable response');
+    }
+  }
+
+  // Store in history
+  state.adjudicationHistory.push({
+    turn: state.currentTurn,
+    power: power.abbr,
+    action: action.name,
+    summary: parsed.shortLog
+  });
+
+  return parsed;
+}
+
+function applyStateChanges(result, playerIdx) {
+  const g = state.globalState;
+  const sc = result.stateChanges || {};
+  g.awakening = Math.max(0, Math.min(100, g.awakening + (sc.awakening || 0)));
+  g.madness = Math.max(0, Math.min(100, g.madness + (sc.madness || 0)));
+  g.containment = Math.max(0, Math.min(100, g.containment + (sc.containment || 0)));
+  g.stability = Math.max(0, Math.min(100, g.stability + (sc.stability || 0)));
+
+  const pc = result.playerChanges || {};
+  state.players[playerIdx].score = Math.max(0, Math.min(100, state.players[playerIdx].score + (pc.scoreδelta || pc.scoreδ || pc.scoreδ || pc['scoreδelta'] || pc.scoreδelta || 0)));
+  state.players[playerIdx].stability = Math.max(0, Math.min(100, state.players[playerIdx].stability + (pc.stabilitydelta || pc.stabilityδ || 0)));
+
+  // Apply score delta properly
+  const scoreDelta = pc.scoreδelta ?? pc.scoredelta ?? pc['score_delta'] ?? pc.scoreΔ ?? 0;
+  const stabDelta = pc.stabilitydelta ?? pc.stabilitΔ ?? pc['stability_delta'] ?? 0;
+  state.players[playerIdx].score = Math.max(0, Math.min(100, state.players[playerIdx].score + scoreDelta));
+  state.players[playerIdx].stability = Math.max(0, Math.min(100, state.players[playerIdx].stability + stabDelta));
+
+  // Region update
+  if (result.regionUpdate) {
+    const parts = result.regionUpdate.split(' ');
+    if (parts.length >= 2) {
+      const rid = parts[0];
+      const newStatus = parts[parts.length - 1];
+      const region = state.regions.find(r => r.id === rid);
+      if (region) {
+        region.status = newStatus;
+        const colorMap = { stable: '#4af0b0', threatened: '#ff8040', critical: '#ff4444', fallen: '#880000', NEXUS: '#c060ff' };
+        region.dot = colorMap[newStatus] || '#666';
+      }
+    }
+  }
+}
+
+// Fix: properly extract score/stability deltas
+const origApply = applyStateChanges;
+
+async function typewriterEffect(text, elementId) {
+  const el = document.getElementById(elementId);
+  el.textContent = '';
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < text.length; i++) {
+    el.textContent += text[i];
+    if (i % 4 === 0) await delay(16);
+  }
+}
+
+// ===================== END GAME =====================
+
+async function triggerEndGame(forcedEnding) {
+  clearInterval(clockInterval);
+  showScreen('end-screen');
+
+  const g = state.globalState;
+  const awakening = g.awakening;
+  const containment = g.containment;
+  const stability = g.stability;
+  const madness = g.madness;
+
+  let verdictClass, verdictText;
+  if (forcedEnding === 'cthulhu' || awakening >= 100) {
+    verdictClass = 'ia-ia';
+    verdictText = "IA! IA! CTHULHU FHTAGN!";
+  } else if (awakening < 30 && stability > 60) {
+    verdictClass = 'humanity-survives';
+    verdictText = "THE CRISIS IS CONTAINED";
+  } else if (awakening < 60 && stability > 40) {
+    verdictClass = 'partial-victory';
+    verdictText = "PYRRHIC VICTORY";
+  } else {
+    verdictClass = 'cthulhu-rises';
+    verdictText = "THE DARKNESS ENDURES";
+  }
+
+  document.getElementById('end-verdict').className = `end-verdict ${verdictClass}`;
+  document.getElementById('end-verdict').textContent = verdictText;
+
+  // Generate final narrative via API
+  try {
+    const finalNarrative = await generateEndNarrative(verdictText, g);
+    document.getElementById('end-narrative').textContent = finalNarrative;
+  } catch (e) {
+    document.getElementById('end-narrative').textContent =
+      "The events of the past 72 hours have reshaped the world irrevocably. Whether humanity has survived, or merely delayed the inevitable, only time will tell.";
+  }
+
+  // Render scores
+  const sorted = [...state.players].sort((a, b) => b.score - a.score);
+  const scores = document.getElementById('end-scores');
+  scores.innerHTML = sorted.map((p, rank) => {
+    const power = POWERS[p.powerId];
+    return `<div class="score-card ${rank === 0 ? 'rank-1' : ''}">
+      <div class="flag">${power.flag}</div>
+      <div class="power">${power.name}</div>
+      <div class="score" style="color:${rank===0?'var(--gold)':rank<2?'var(--accent)':'var(--muted)'}">${Math.round(p.score)}</div>
+      <div class="rank">${['1ST — DOMINANT','2ND — INFLUENTIAL','3RD — SURVIVING','4TH — DIMINISHED','5TH — STRUGGLING'][rank]}</div>
+      <div style="font-size:9px; color:var(--muted); margin-top:4px;">${p.name}</div>
+    </div>`;
+  }).join('');
+}
+
+async function generateEndNarrative(verdict, globalState) {
+  const allActions = state.adjudicationHistory.map(h =>
+    `${h.power}: ${h.action} — ${h.summary}`
+  ).join('\n');
+
+  const prompt = `You are the Oracle concluding THE GREAT AWAKENING wargame. The verdict is: "${verdict}".
+
+Final world state: Awakening ${Math.round(globalState.awakening)}%, Madness ${Math.round(globalState.madness)}%, Containment ${Math.round(globalState.containment)}%, Stability ${Math.round(globalState.stability)}%.
+
+Actions taken this session:
+${allActions}
+
+Write a 3-4 sentence closing narrative in the style of a classified after-action report crossed with Lovecraftian prose. What was the ultimate outcome for humanity? What strange new world has emerged? Be vivid and specific. Plain text only, no JSON.`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 300,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await response.json();
+  return data.content[0].text;
+}
+
+// ===================== INIT =====================
+
+// Initialize setup screen
+renderPowerSlots();
+renderPowerGrid();
+
+function renderPowerSlots() {
+  setPlayerCount(3);
+}
+
+// Auto-assign default names
+playerAssignments = [
+  { name: 'Player 1', powerId: '' },
+  { name: 'Player 2', powerId: '' },
+  { name: 'Player 3', powerId: '' }
+];
+renderPlayerSlots();
+</script>
+</body>
+</html>
