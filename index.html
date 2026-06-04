@@ -128,6 +128,8 @@ header::before {
   justify-content: flex-start;
   padding: 40px 20px;
   gap: 30px;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .setup-intro {
@@ -172,9 +174,8 @@ header::before {
 
 .power-select-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  max-width: 900px;
   width: 100%;
 }
 
@@ -832,10 +833,10 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
 
 .setup-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 24px;
-  max-width: 900px;
   width: 100%;
+  max-width: 700px;
 }
 
 .setup-section {
