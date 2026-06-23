@@ -1804,11 +1804,10 @@ RESPOND AS VALID JSON ONLY (no markdown):
   "complication": "Optional 1 sentence complication or revelation for future turns"
 }`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("https://oracle.awakening.coldalchemygames.com", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
       messages: [{ role: "user", content: systemPrompt }]
     })
@@ -1956,11 +1955,10 @@ ${allActions}
 
 Write a 3-4 sentence closing narrative in the style of a classified after-action report crossed with Lovecraftian prose. What was the ultimate outcome for humanity? What strange new world has emerged? Be vivid and specific. Plain text only, no JSON.`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("https://oracle.awakening.coldalchemygames.com", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
       max_tokens: 300,
       messages: [{ role: "user", content: prompt }]
     })
