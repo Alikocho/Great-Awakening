@@ -1284,8 +1284,8 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
     <div class="status-pill active">AI-Adjudicated</div>
   </div>
   <div style="text-align:right">
-    <div id="clock">T+000:00</div>
-    <div id="phase-label">AWAITING DEPLOYMENT</div>
+    <div id="clock">H+00:00</div>
+    <div id="phase-label">H+00:00 — AWAITING DEPLOYMENT</div>
   </div>
 </header>
 
@@ -1430,11 +1430,11 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
             Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.
           </div>
           <div class="log-entry event-bad">
-            <div class="log-turn">T+00:00</div>
+            <div class="log-turn">H+00:00</div>
             Mass casualty events confirmed in 14 coastal cities. Cause: unknown.
           </div>
           <div class="log-entry event-normal">
-            <div class="log-turn">T+00:01</div>
+            <div class="log-turn">H+00:06</div>
             Crisis Operations wargame initiated. All commands standing by.
           </div>
         </div>
@@ -1930,7 +1930,7 @@ function addLog(text, type = 'event-normal') {
   const log = document.getElementById('event-log');
   const entry = document.createElement('div');
   entry.className = `log-entry ${type}`;
-  entry.innerHTML = `<div class="log-turn">T+${String(state.currentTurn).padStart(2,'0')}:${String(state.currentPlayerIdx).padStart(2,'0')}</div>${text}`;
+  entry.innerHTML = `<div class="log-turn">${getInGameTime()}</div>${text}`;
   log.appendChild(entry);
   log.scrollTop = log.scrollHeight;
 }
@@ -2047,17 +2047,47 @@ function renderRegions() {
   updateRegions();
 }
 
+// ===================== IN-GAME CRISIS CLOCK =====================
+// Each turn covers a different span of in-game hours:
+//   Turn 1: H+00:00 → H+06:00  (6 in-game hours)
+//   Turn 2: H+06:00 → H+18:00  (12 in-game hours)
+//   Turn 3: H+18:00 → H+36:00  (18 in-game hours)
+//   Turn 4: H+36:00 → H+72:00  (36 in-game hours)
+// Clock advances at 1 in-game minute per 2 real seconds.
+
+const TURN_START_HOURS = [0, 6, 18, 36];   // in-game hour at start of each turn
+const TURN_END_HOURS   = [6, 18, 36, 72];  // in-game hour at end of each turn
+
 let clockInterval;
-let clockSeconds = 0;
+let clockInGameMinutes = 0;  // total in-game minutes elapsed
+
 function startClock() {
   clearInterval(clockInterval);
+  // Set clock to the start hour of the current turn
+  const turnIdx = Math.max(0, (state.currentTurn || 1) - 1);
+  clockInGameMinutes = TURN_START_HOURS[turnIdx] * 60;
+  updateClockDisplay();
+
   clockInterval = setInterval(() => {
-    clockSeconds++;
-    const h = String(Math.floor(clockSeconds/3600)).padStart(3,'0');
-    const m = String(Math.floor((clockSeconds%3600)/60)).padStart(2,'0');
-    const s = String(clockSeconds%60).padStart(2,'0');
-    document.getElementById('clock').textContent = `T+${h}:${m}`;
-  }, 1000);
+    clockInGameMinutes++;
+    updateClockDisplay();
+  }, 2000); // 1 in-game minute = 2 real seconds
+}
+
+function updateClockDisplay() {
+  const totalMins = clockInGameMinutes;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const hStr = String(h).padStart(2, '0');
+  const mStr = String(m).padStart(2, '0');
+  const el = document.getElementById('clock');
+  if (el) el.textContent = `H+${hStr}:${mStr}`;
+}
+
+function getInGameTime() {
+  const h = Math.floor(clockInGameMinutes / 60);
+  const m = clockInGameMinutes % 60;
+  return `H+${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
 
 function selectAction(id) {
@@ -2089,7 +2119,8 @@ function startTurn() {
 
   document.getElementById('turn-title').textContent = `TURN ${state.currentTurn} — ${turnNames[state.currentTurn-1]}`;
   document.getElementById('situation-box').textContent = turnSituations[state.currentTurn-1];
-  document.getElementById('phase-label').textContent = `TURN ${state.currentTurn}: ${turnNames[state.currentTurn-1]}`;
+  const turnHourRanges = ['H+00 TO H+06','H+06 TO H+18','H+18 TO H+36','H+36 TO H+72'];
+  document.getElementById('phase-label').textContent = `${turnHourRanges[state.currentTurn-1]} — ${turnNames[state.currentTurn-1]}`;
 
   state.currentPlayerIdx = 0;
   state.turnOrders = state.turnOrders.filter(o => o.turn !== state.currentTurn);
