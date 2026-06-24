@@ -935,6 +935,335 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
   line-height: 1.6;
 }
 .htp-item strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: 11px; }
+
+/* ===== CRISIS MAP OVERLAY ===== */
+#map-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6,10,16,0.97);
+  z-index: 10000;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+#map-overlay.open { display: flex; }
+
+/* Scanlines on overlay */
+#map-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid #1e3a5f;
+  background: #0d1520;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.map-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: #4af0b0;
+  text-shadow: 0 0 12px rgba(74,240,176,0.4);
+}
+
+.map-subtitle {
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  color: #4a6a88;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.map-close-btn {
+  background: transparent;
+  border: 1px solid #1e3a5f;
+  color: #6a8aa8;
+  padding: 6px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.map-close-btn:hover { border-color: #4af0b0; color: #4af0b0; }
+
+.map-body {
+  flex: 1;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  min-height: 0;
+}
+
+/* SVG world map container */
+#crisis-map-svg {
+  width: 100%;
+  max-width: 1100px;
+  height: auto;
+  max-height: calc(100vh - 160px);
+}
+
+/* Land masses */
+.land {
+  fill: #0d1a2a;
+  stroke: #1e3a5f;
+  stroke-width: 0.5;
+}
+.land-secondary {
+  fill: #0a1520;
+  stroke: #1a3050;
+  stroke-width: 0.3;
+}
+
+/* Ocean */
+.ocean {
+  fill: #060e18;
+}
+
+/* Grid lines */
+.grid-line {
+  stroke: #0e2035;
+  stroke-width: 0.3;
+  fill: none;
+}
+
+/* Region markers */
+.region-marker { cursor: pointer; }
+
+.marker-ring-outer {
+  fill: none;
+  stroke-width: 1;
+  opacity: 0.3;
+  animation: ringPulse 2.5s infinite;
+}
+.marker-ring-mid {
+  fill: none;
+  stroke-width: 1;
+  opacity: 0.5;
+  animation: ringPulse 2.5s infinite 0.5s;
+}
+.marker-dot {
+  transition: r 0.3s;
+}
+.region-marker:hover .marker-dot { r: 7; }
+
+/* R'lyeh special */
+.rlyeh-glow {
+  animation: rlyehPulse 1.8s infinite;
+}
+.rlyeh-ring {
+  fill: none;
+  stroke: #c060ff;
+  stroke-width: 1;
+  opacity: 0;
+  animation: rlyehRing 1.8s infinite;
+}
+
+@keyframes ringPulse {
+  0%, 100% { r: 14; opacity: 0.15; }
+  50% { r: 20; opacity: 0.05; }
+}
+@keyframes rlyehPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@keyframes rlyehRing {
+  0% { r: 8; opacity: 0.6; }
+  100% { r: 28; opacity: 0; }
+}
+
+/* Status labels on map */
+.region-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+/* Tooltip */
+#map-tooltip {
+  position: absolute;
+  background: #0d1520;
+  border: 1px solid #1e3a5f;
+  padding: 10px 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+  min-width: 160px;
+  max-width: 220px;
+}
+#map-tooltip.visible { opacity: 1; }
+#map-tooltip .tt-name {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #c8d8e8;
+  margin-bottom: 5px;
+}
+#map-tooltip .tt-status {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  font-family: 'Share Tech Mono', monospace;
+}
+#map-tooltip .tt-desc {
+  font-size: 10px;
+  color: #6a8aa8;
+  line-height: 1.5;
+}
+
+/* Map legend */
+.map-legend {
+  display: flex;
+  gap: 20px;
+  padding: 8px 24px;
+  border-top: 1px solid #1e3a5f;
+  background: #0d1520;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #4a6a88;
+}
+.legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* MAP TOGGLE BUTTON in header */
+.map-toggle-btn {
+  background: transparent;
+  border: 1px solid #1e3a5f;
+  color: #6a8aa8;
+  padding: 4px 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+.map-toggle-btn:hover {
+  border-color: #4af0b0;
+  color: #4af0b0;
+  box-shadow: 0 0 8px rgba(74,240,176,0.15);
+}
+
+
+/* ===== VOICE INPUT ===== */
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.mic-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+}
+.mic-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.mic-btn.recording {
+  border-color: var(--blood);
+  color: var(--blood);
+  animation: micPulse 1s infinite;
+}
+.mic-btn.recording::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid var(--blood);
+  opacity: 0.4;
+  animation: micRing 1s infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(255,68,68,0); }
+}
+@keyframes micRing {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.voice-status {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: 1;
+  font-family: 'Share Tech Mono', monospace;
+}
+.voice-status.active { color: var(--blood); }
+.voice-status.interim { color: var(--gold); }
+
+.voice-interim {
+  font-size: 11px;
+  color: var(--dim);
+  font-style: italic;
+  font-family: 'Special Elite', cursive;
+  padding: 6px 10px;
+  border-left: 2px solid var(--border);
+  margin-bottom: 6px;
+  min-height: 20px;
+  display: none;
+  line-height: 1.5;
+}
+.voice-interim.visible { display: block; }
+
+.mic-unsupported {
+  font-size: 10px;
+  color: var(--dim);
+  font-style: italic;
+}
+
 </style>
 </head>
 <body>
@@ -949,6 +1278,7 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
   <div class="header-status">
     <div class="status-pill classified">Top Secret</div>
     <div id="threat-status" class="status-pill alert">Threat Level: OMEGA</div>
+    <button class="map-toggle-btn" onclick="toggleMap()" id="map-btn">🗺 CRISIS MAP</button>
     <div class="status-pill active">AI-Adjudicated</div>
   </div>
   <div style="text-align:right">
@@ -998,7 +1328,7 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
       </div>
       <div class="htp-item">
         <strong>🏆 VICTORY</strong>
-        After 4 turns (one full crisis cycle), scores are tallied. Global survival depends on collective choices — but individual rankings determine who shaped the post-Awakening world.
+        The game ends after 4 turns. Two verdicts are delivered: a global outcome based on whether the Awakening was contained, and individual rankings reflecting how well each power advanced its interests under pressure. The Oracle evaluates both throughout the session. Rankings run from Dominant to Struggling — and a power can rank first in a world that fell.
       </div>
     </div>
   </div>
@@ -1139,6 +1469,11 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
         <!-- Order input -->
         <div class="order-input-section" id="order-input-section">
           <label>YOUR ORDERS — Speak plainly. The Oracle hears all.</label>
+          <div class="voice-row" id="voice-row">
+            <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Click to dictate orders">🎙</button>
+            <span class="voice-status" id="voice-status">Click microphone to dictate orders</span>
+          </div>
+          <div class="voice-interim" id="voice-interim"></div>
           <textarea id="order-textarea" placeholder="Describe your nation's actions in detail. The more specific, the better. What forces are you committing? What are your objectives? What are you willing to sacrifice?"></textarea>
           <div class="submit-row">
             <button class="btn" id="submit-btn" onclick="submitOrders()">▶ SUBMIT ORDERS</button>
@@ -1190,6 +1525,154 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
 </div>
 
 </div>
+
+
+<!-- ===== CRISIS MAP OVERLAY ===== -->
+<div id="map-overlay">
+  <div class="map-header">
+    <div>
+      <div class="map-title">☩ GLOBAL CRISIS MAP — REAL TIME</div>
+      <div class="map-subtitle">Crisis Operations // Classified // All regions updated by Oracle adjudication</div>
+    </div>
+    <button class="map-close-btn" onclick="toggleMap()">✕ CLOSE [ESC]</button>
+  </div>
+
+  <div class="map-body">
+    <div id="map-tooltip">
+      <div class="tt-name" id="tt-name">—</div>
+      <div class="tt-status" id="tt-status">—</div>
+      <div class="tt-desc" id="tt-desc">—</div>
+    </div>
+
+    <svg id="crisis-map-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+      <rect class="ocean" width="1000" height="500"/>
+      <line class="grid-line" x1="0" y1="83" x2="1000" y2="83"/>
+      <line class="grid-line" x1="0" y1="166" x2="1000" y2="166"/>
+      <line class="grid-line" x1="0" y1="250" x2="1000" y2="250"/>
+      <line class="grid-line" x1="0" y1="334" x2="1000" y2="334"/>
+      <line class="grid-line" x1="0" y1="417" x2="1000" y2="417"/>
+      <line class="grid-line" x1="125" y1="0" x2="125" y2="500"/>
+      <line class="grid-line" x1="250" y1="0" x2="250" y2="500"/>
+      <line class="grid-line" x1="375" y1="0" x2="375" y2="500"/>
+      <line class="grid-line" x1="500" y1="0" x2="500" y2="500"/>
+      <line class="grid-line" x1="625" y1="0" x2="625" y2="500"/>
+      <line class="grid-line" x1="750" y1="0" x2="750" y2="500"/>
+      <line class="grid-line" x1="875" y1="0" x2="875" y2="500"/>
+      <!-- North America -->
+      <polygon class="land" points="55,70 90,60 130,55 165,62 185,75 195,95 180,115 170,140 155,155 145,175 130,185 115,190 100,195 88,210 75,220 70,240 65,255 55,250 48,235 45,215 50,195 45,175 40,155 42,130 48,110 52,90 55,70"/>
+      <!-- Greenland -->
+      <polygon class="land-secondary" points="155,35 175,28 200,30 210,45 205,58 190,65 170,62 155,52 150,42 155,35"/>
+      <!-- Central America -->
+      <polygon class="land-secondary" points="118,210 130,215 138,225 132,232 120,228 112,218 118,210"/>
+      <!-- South America -->
+      <polygon class="land" points="135,230 155,222 175,225 190,240 200,260 205,285 200,315 195,340 185,365 170,385 155,395 140,390 128,375 122,355 118,330 115,305 118,280 122,258 128,240 135,230"/>
+      <!-- Europe -->
+      <polygon class="land" points="420,75 440,70 460,72 478,80 490,92 485,108 475,118 465,125 450,128 438,122 425,115 415,105 415,90 420,75"/>
+      <!-- Scandinavia -->
+      <polygon class="land-secondary" points="435,55 450,48 465,50 472,62 465,75 450,78 435,72 430,62 435,55"/>
+      <!-- UK -->
+      <polygon class="land-secondary" points="408,82 418,78 424,85 420,96 410,98 404,90 408,82"/>
+      <!-- Africa -->
+      <polygon class="land" points="425,135 450,128 475,130 495,145 505,165 510,190 512,220 508,250 500,275 488,298 472,315 455,325 438,322 422,310 408,292 398,268 395,242 398,215 402,188 408,162 415,148 425,135"/>
+      <!-- Russia / Northern Asia -->
+      <polygon class="land" points="478,55 510,48 560,45 610,42 660,44 700,48 740,52 775,58 800,68 810,82 800,95 778,102 750,105 720,108 690,112 665,118 640,122 610,118 580,112 555,108 530,105 508,100 490,92 480,78 478,55"/>
+      <!-- Middle East -->
+      <polygon class="land" points="490,148 510,142 530,145 545,158 548,175 540,192 528,200 512,202 498,195 488,182 486,165 490,148"/>
+      <!-- Indian Subcontinent -->
+      <polygon class="land" points="560,148 582,142 600,148 612,162 615,180 610,198 598,215 582,220 568,215 558,198 554,178 556,162 560,148"/>
+      <!-- Southeast Asia -->
+      <polygon class="land" points="630,155 652,148 672,152 688,165 692,182 682,195 665,198 648,192 635,178 628,165 630,155"/>
+      <!-- China / East Asia -->
+      <polygon class="land" points="608,92 640,85 672,85 700,90 722,100 732,115 728,132 715,145 695,152 672,155 650,152 628,145 612,132 605,115 608,92"/>
+      <!-- Japan -->
+      <polygon class="land-secondary" points="748,105 760,100 770,105 768,118 756,122 746,115 748,105"/>
+      <!-- Korea -->
+      <polygon class="land-secondary" points="720,112 730,108 738,115 735,128 722,130 715,122 720,112"/>
+      <!-- Australia -->
+      <polygon class="land" points="698,295 730,285 762,282 792,285 815,298 825,318 822,340 810,358 790,368 765,372 738,368 715,355 700,338 695,318 698,295"/>
+      <!-- New Zealand -->
+      <polygon class="land-secondary" points="858,345 866,338 874,342 872,355 862,360 854,352 858,345"/>
+      <!-- Indonesia -->
+      <polygon class="land-secondary" points="672,218 695,212 715,218 722,232 712,242 692,240 675,232 672,218"/>
+      <polygon class="land-secondary" points="728,188 742,182 754,188 752,200 740,205 728,198 728,188"/>
+      <!-- Madagascar -->
+      <polygon class="land-secondary" points="508,285 516,278 524,282 522,298 512,305 504,298 508,285"/>
+      <!-- Iceland -->
+      <polygon class="land-secondary" points="378,58 392,52 405,55 408,65 398,72 382,70 376,65 378,58"/>
+
+      <!-- REGION MARKERS -->
+      <g class="region-marker" data-region="pacific" transform="translate(840,195)" onmouseenter="showTooltip(event,'pacific')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'pacific')">
+        <circle class="marker-ring-outer" id="ring-outer-pacific" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-pacific" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-pacific" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-pacific" x="0" y="22">Pacific Rim</text>
+      </g>
+      <g class="region-marker" data-region="northatlantic" transform="translate(330,130)" onmouseenter="showTooltip(event,'northatlantic')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'northatlantic')">
+        <circle class="marker-ring-outer" id="ring-outer-northatlantic" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-northatlantic" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-northatlantic" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-northatlantic" x="0" y="22">N. Atlantic</text>
+      </g>
+      <g class="region-marker" data-region="europe" transform="translate(458,105)" onmouseenter="showTooltip(event,'europe')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'europe')">
+        <circle class="marker-ring-outer" id="ring-outer-europe" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-europe" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-europe" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-europe" x="0" y="22">C. Europe</text>
+      </g>
+      <g class="region-marker" data-region="middleeast" transform="translate(528,170)" onmouseenter="showTooltip(event,'middleeast')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'middleeast')">
+        <circle class="marker-ring-outer" id="ring-outer-middleeast" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-middleeast" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-middleeast" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-middleeast" x="0" y="22">Middle East</text>
+      </g>
+      <g class="region-marker" data-region="eastasia" transform="translate(720,140)" onmouseenter="showTooltip(event,'eastasia')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'eastasia')">
+        <circle class="marker-ring-outer" id="ring-outer-eastasia" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-eastasia" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-eastasia" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-eastasia" x="0" y="22">East Asia</text>
+      </g>
+      <g class="region-marker" data-region="northamerica" transform="translate(120,145)" onmouseenter="showTooltip(event,'northamerica')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'northamerica')">
+        <circle class="marker-ring-outer" id="ring-outer-northamerica" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-northamerica" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-northamerica" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-northamerica" x="0" y="22">N. America</text>
+      </g>
+      <g class="region-marker" data-region="russia" transform="translate(628,72)" onmouseenter="showTooltip(event,'russia')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'russia')">
+        <circle class="marker-ring-outer" id="ring-outer-russia" cx="0" cy="0" r="14"/>
+        <circle class="marker-ring-mid" id="ring-mid-russia" cx="0" cy="0" r="9"/>
+        <circle class="marker-dot" id="dot-russia" cx="0" cy="0" r="5"/>
+        <text class="region-label" id="label-russia" x="0" y="22">C. Russia</text>
+      </g>
+      <!-- R'lyeh — special NEXUS marker -->
+      <g class="region-marker" data-region="rlyeh" transform="translate(870,310)" onmouseenter="showTooltip(event,'rlyeh')" onmouseleave="hideTooltip()" onclick="showTooltip(event,'rlyeh')">
+        <circle class="rlyeh-ring" cx="0" cy="0" r="8" style="animation-delay:0s"/>
+        <circle class="rlyeh-ring" cx="0" cy="0" r="8" style="animation-delay:0.6s"/>
+        <circle class="rlyeh-ring" cx="0" cy="0" r="8" style="animation-delay:1.2s"/>
+        <circle class="rlyeh-glow marker-dot" id="dot-rlyeh" cx="0" cy="0" r="7" fill="#c060ff"/>
+        <text class="region-label" id="label-rlyeh" x="0" y="24" fill="#c060ff">R'lyeh</text>
+        <line x1="-14" y1="0" x2="-8" y2="0" stroke="#c060ff" stroke-width="0.8" opacity="0.6"/>
+        <line x1="8" y1="0" x2="14" y2="0" stroke="#c060ff" stroke-width="0.8" opacity="0.6"/>
+        <line x1="0" y1="-14" x2="0" y2="-8" stroke="#c060ff" stroke-width="0.8" opacity="0.6"/>
+        <line x1="0" y1="8" x2="0" y2="14" stroke="#c060ff" stroke-width="0.8" opacity="0.6"/>
+      </g>
+
+      <text x="8" y="494" font-family="'Share Tech Mono',monospace" font-size="6" fill="#1e3a5f" letter-spacing="1">
+        CRISIS OPERATIONS // CLASSIFIED // COLD ALCHEMY GAMES // DESIGNED BY ALI KOCHO-WILLIAMS
+      </text>
+    </svg>
+  </div>
+
+  <div class="map-legend">
+    <span style="font-size:9px;letter-spacing:0.2em;color:#2a4a6a;text-transform:uppercase;margin-right:8px;">STATUS:</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#4af0b0"></div>Stable</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff8040"></div>Threatened</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff4444"></div>Critical</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#880000"></div>Fallen</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c060ff"></div>Nexus / R'lyeh</div>
+    <span style="margin-left:auto;font-size:9px;letter-spacing:0.15em;color:#2a4a6a;font-family:'Share Tech Mono',monospace;text-transform:uppercase;">Press ESC to close</span>
+  </div>
+</div>
+
 
 <script>
 // ===================== GAME DATA =====================
@@ -1985,6 +2468,242 @@ playerAssignments = [
   { name: 'Player 3', powerId: '' }
 ];
 renderPlayerSlots();
+
+// ===================== CRISIS MAP =====================
+
+const REGION_DESCRIPTIONS = {
+  pacific:      'Primary manifestation zone. Entity emergence along Hawaii, Japan, and New Zealand coastlines. Communications with Pacific Fleet at 40% capacity.',
+  northatlantic:'Anomalous deep-water activity increasing. Cult networks active in Iceland and coastal UK. North Sea oil platforms evacuated.',
+  europe:       'Mediterranean entity population stirring. NEPTUNE Division assets on alert. Southern member states under pressure.',
+  middleeast:   'Coastal manifestations in the Persian Gulf. Oil infrastructure threatened. Regional governments imposing media blackouts.',
+  eastasia:     'South China Sea primary theatre. PRC acoustic countermeasures deployed. Taiwan Strait entities responding to R\'lyeh signal.',
+  northamerica: 'Domestic cult activity surge 800%. Three carrier strike groups combat-ineffective. FEMA overloaded.',
+  russia:       'Interior geography provides buffer. Norilsk anomaly active. FSB monitoring entity communication networks.',
+  rlyeh:        'Coordinates: 47°S 126°W // NEXUS POINT. R\'lyeh ascent in progress. Direct action in this zone carries extreme Madness risk.'
+};
+
+const STATUS_COLORS = {
+  stable:    '#4af0b0',
+  threatened:'#ff8040',
+  critical:  '#ff4444',
+  fallen:    '#880000',
+  NEXUS:     '#c060ff'
+};
+
+function toggleMap() {
+  const overlay = document.getElementById('map-overlay');
+  overlay.classList.toggle('open');
+  if (overlay.classList.contains('open')) {
+    refreshMapMarkers();
+  }
+}
+
+function refreshMapMarkers() {
+  const regions = state && state.regions ? state.regions : [];
+  regions.forEach(r => {
+    const color = STATUS_COLORS[r.status] || '#4a6a88';
+    const dot = document.getElementById('dot-' + r.id);
+    const outerRing = document.getElementById('ring-outer-' + r.id);
+    const midRing = document.getElementById('ring-mid-' + r.id);
+    const label = document.getElementById('label-' + r.id);
+
+    if (r.id === 'rlyeh') return; // R'lyeh has fixed styling
+
+    if (dot) {
+      dot.setAttribute('fill', color);
+      dot.setAttribute('r', r.status === 'critical' || r.status === 'fallen' ? '6' : '5');
+    }
+    if (outerRing) {
+      outerRing.setAttribute('stroke', color);
+      outerRing.style.animationDuration = r.status === 'critical' ? '1.2s' : r.status === 'fallen' ? '0.7s' : '2.5s';
+    }
+    if (midRing) {
+      midRing.setAttribute('stroke', color);
+    }
+    if (label) {
+      label.setAttribute('fill', color);
+    }
+  });
+}
+
+function showTooltip(event, regionId) {
+  const region = state && state.regions 
+    ? state.regions.find(r => r.id === regionId)
+    : REGIONS.find(r => r.id === regionId);
+
+  if (!region) return;
+
+  const tt = document.getElementById('map-tooltip');
+  const color = STATUS_COLORS[region.status] || '#4a6a88';
+
+  document.getElementById('tt-name').textContent = region.name;
+  document.getElementById('tt-status').textContent = region.status;
+  document.getElementById('tt-status').style.color = color;
+  document.getElementById('tt-desc').textContent = REGION_DESCRIPTIONS[regionId] || '';
+
+  // Position tooltip near cursor but keep it on screen
+  const mapBody = document.querySelector('.map-body');
+  const rect = mapBody.getBoundingClientRect();
+  const x = event.clientX - rect.left + 12;
+  const y = event.clientY - rect.top - 10;
+
+  tt.style.left = Math.min(x, rect.width - 240) + 'px';
+  tt.style.top = Math.max(y - 80, 8) + 'px';
+  tt.classList.add('visible');
+}
+
+function hideTooltip() {
+  document.getElementById('map-tooltip').classList.remove('visible');
+}
+
+// ESC key closes map
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('map-overlay').classList.remove('open');
+  }
+});
+
+// Refresh markers whenever regions update
+const _origUpdateRegions = updateRegions;
+function updateRegions() {
+  _origUpdateRegions();
+  if (document.getElementById('map-overlay').classList.contains('open')) {
+    refreshMapMarkers();
+  }
+}
+
+
+// ===================== VOICE INPUT =====================
+
+let recognition = null;
+let isRecording = false;
+let finalTranscript = '';
+
+function initVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognition) {
+    const row = document.getElementById('voice-row');
+    if (row) {
+      row.innerHTML = '<span class="mic-unsupported">⚠ Voice input not available in this browser. Use Chrome or Edge.</span>';
+    }
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    finalTranscript = document.getElementById('order-textarea').value;
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-btn').textContent = '⏹';
+    document.getElementById('voice-status').textContent = 'Recording... speak your orders';
+    document.getElementById('voice-status').className = 'voice-status active';
+    document.getElementById('voice-interim').classList.add('visible');
+  };
+
+  recognition.onresult = (event) => {
+    let interimText = '';
+    
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += (finalTranscript ? ' ' : '') + transcript.trim();
+        document.getElementById('order-textarea').value = finalTranscript;
+      } else {
+        interimText += transcript;
+      }
+    }
+    
+    // Show interim text as preview
+    const interimEl = document.getElementById('voice-interim');
+    if (interimText) {
+      interimEl.textContent = interimText;
+    }
+  };
+
+  recognition.onerror = (event) => {
+    let msg = 'Voice error';
+    if (event.error === 'not-allowed') msg = '⚠ Microphone access denied — check browser permissions';
+    if (event.error === 'no-speech') msg = 'No speech detected — try again';
+    if (event.error === 'network') msg = 'Network error — voice requires internet';
+    
+    document.getElementById('voice-status').textContent = msg;
+    document.getElementById('voice-status').className = 'voice-status';
+    stopVoice();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // Auto-restarted if still in recording mode (handles browser timeouts)
+      try { recognition.start(); } catch(e) { stopVoice(); }
+    }
+  };
+}
+
+function toggleVoice() {
+  if (!recognition) {
+    initVoice();
+    if (!recognition) return;
+  }
+  
+  if (isRecording) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+}
+
+function startVoice() {
+  try {
+    recognition.start();
+  } catch(e) {
+    // Already started
+  }
+}
+
+function stopVoice() {
+  isRecording = false;
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
+  
+  document.getElementById('mic-btn').classList.remove('recording');
+  document.getElementById('mic-btn').textContent = '🎙';
+  
+  const ta = document.getElementById('order-textarea');
+  const hasText = ta.value.trim().length > 0;
+  
+  document.getElementById('voice-status').textContent = 
+    hasText ? 'Dictation complete — review and edit above' : 'Click microphone to dictate orders';
+  document.getElementById('voice-status').className = 'voice-status' + (hasText ? ' interim' : '');
+  document.getElementById('voice-interim').classList.remove('visible');
+  document.getElementById('voice-interim').textContent = '';
+}
+
+// Stop recording when order is submitted
+const _origSubmitOrders = submitOrders;
+async function submitOrders() {
+  if (isRecording) stopVoice();
+  await _origSubmitOrders();
+}
+
+// Stop recording when player changes
+const _origSetActivePlayer = setActivePlayer;
+function setActivePlayer(idx) {
+  if (isRecording) stopVoice();
+  _origSetActivePlayer(idx);
+}
+
+// Initialise on load
+document.addEventListener('DOMContentLoaded', () => {
+  initVoice();
+});
+
 </script>
 </body>
 </html>
