@@ -1961,6 +1961,11 @@ function updateRegions() {
       <span class="region-status" style="color:${colorMap[r.status] || '#666'}">${r.status}</span>
     </div>`;
   }).join('');
+  // Refresh map markers if overlay is open
+  const overlay = document.getElementById('map-overlay');
+  if (overlay && overlay.classList.contains('open')) {
+    if (typeof refreshMapMarkers === 'function') refreshMapMarkers();
+  }
 }
 
 function renderPlayerStatuses() {
@@ -2093,6 +2098,8 @@ function startTurn() {
 }
 
 function setActivePlayer(idx) {
+  // Stop voice recording if active
+  if (typeof isRecording !== 'undefined' && isRecording) stopVoice();
   state.currentPlayerIdx = idx;
   const player = state.players[idx];
   const power = POWERS[player.powerId];
@@ -2122,6 +2129,8 @@ function setActivePlayer(idx) {
 }
 
 async function submitOrders() {
+  // Stop voice recording if active
+  if (typeof isRecording !== 'undefined' && isRecording) stopVoice();
   if (!state.selectedAction) {
     document.getElementById('submit-status').textContent = '⚠ Select an action type first.';
     return;
@@ -2492,9 +2501,10 @@ const STATUS_COLORS = {
 
 function toggleMap() {
   const overlay = document.getElementById('map-overlay');
+  if (!overlay) return;
   overlay.classList.toggle('open');
   if (overlay.classList.contains('open')) {
-    refreshMapMarkers();
+    if (typeof refreshMapMarkers === 'function') refreshMapMarkers();
   }
 }
 
@@ -2563,14 +2573,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Refresh markers whenever regions update
-const _origUpdateRegions = updateRegions;
-function updateRegions() {
-  _origUpdateRegions();
-  if (document.getElementById('map-overlay').classList.contains('open')) {
-    refreshMapMarkers();
-  }
-}
+// Map marker refresh is called directly from updateRegions — see below
 
 
 // ===================== VOICE INPUT =====================
@@ -2685,19 +2688,9 @@ function stopVoice() {
   document.getElementById('voice-interim').textContent = '';
 }
 
-// Stop recording when order is submitted
-const _origSubmitOrders = submitOrders;
-async function submitOrders() {
-  if (isRecording) stopVoice();
-  await _origSubmitOrders();
-}
+// Voice stop on submit is handled directly in submitOrders — see below
 
-// Stop recording when player changes
-const _origSetActivePlayer = setActivePlayer;
-function setActivePlayer(idx) {
-  if (isRecording) stopVoice();
-  _origSetActivePlayer(idx);
-}
+// Voice stop on player change is handled directly in setActivePlayer — see below
 
 // Initialise on load
 document.addEventListener('DOMContentLoaded', () => {
