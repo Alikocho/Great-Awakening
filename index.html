@@ -42,7 +42,7 @@ body::before {
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events: none;
-  z-index: 9999;
+  z-index: 100;
   opacity: 0.4;
 }
 
@@ -53,7 +53,7 @@ body::after {
   inset: 0;
   background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
   pointer-events: none;
-  z-index: 9998;
+  z-index: 99;
 }
 
 /* ===================== LAYOUT ===================== */
@@ -69,6 +69,7 @@ header {
   justify-content: space-between;
   position: relative;
   overflow: hidden;
+  z-index: 10001;
 }
 header::before {
   content: '';
@@ -943,7 +944,7 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
   right: 0;
   bottom: 0;
   background: rgba(6,10,16,0.97);
-  z-index: 10000;
+  z-index: 20000;
   display: none;
   flex-direction: column;
   overflow: hidden;
@@ -1175,6 +1176,9 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
   cursor: pointer;
   transition: all 0.2s;
   margin-left: 8px;
+  position: relative;
+  z-index: 10002;
+  pointer-events: auto;
 }
 .map-toggle-btn:hover {
   border-color: #4af0b0;
