@@ -33,7 +33,6 @@ body {
   font-family: 'Share Tech Mono', monospace;
   font-size: 13px;
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 /* Noise overlay */
@@ -58,7 +57,7 @@ body::after {
 }
 
 /* ===================== LAYOUT ===================== */
-#app { display: flex; flex-direction: column; min-height: 100vh; }
+#app { display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; }
 
 /* HEADER */
 header {
@@ -939,7 +938,10 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
 /* ===== CRISIS MAP OVERLAY ===== */
 #map-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(6,10,16,0.97);
   z-index: 10000;
   display: none;
