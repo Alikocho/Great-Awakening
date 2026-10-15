@@ -2249,6 +2249,38 @@ function endOfTurn() {
 
 // ===================== AI ORACLE =====================
 
+function parseOracleJSON(raw) {
+  if (!raw) return null;
+  const text = String(raw).replace(/```json|```/gi, '').trim();
+  const tryParse = t => { try { const o = JSON.parse(t); return (o && typeof o === 'object') ? o : null; } catch (e) { return null; } };
+  let o = tryParse(text);
+  if (o) return o;
+  // Balanced-brace scan from each '{' (respects strings)
+  for (let start = text.indexOf('{'); start !== -1; start = text.indexOf('{', start + 1)) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < text.length; i++) {
+      const c = text[i];
+      if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === '{') depth++;
+      else if (c === '}' && --depth === 0) {
+        const cand = text.slice(start, i + 1);
+        o = tryParse(cand) || tryParse(cand.replace(/,\s*([}\]])/g, '$1').replace(/[\u201C\u201D]/g, '"'));
+        if (o) return o;
+        break;
+      }
+    }
+  }
+  // Last resort: salvage narrative from a truncated/malformed object
+  const m = text.match(/"narrative"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (m) {
+    let narrative = m[1];
+    try { narrative = JSON.parse('"' + m[1] + '"'); } catch (e) {}
+    const sl = text.match(/"shortLog"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    return { narrative, shortLog: sl ? sl[1] : 'The Oracle speaks.', logType: 'event-normal', stateChanges: {}, playerChanges: {} };
+  }
+  return null;
+}
 async function callOracle(player, power, action, orders) {
   const g = state.globalState;
   const recentHistory = state.adjudicationHistory.slice(-4).map(h =>
@@ -2295,6 +2327,7 @@ ADJUDICATION RULES:
 - The Mythos entities are intelligent, adaptive, and not fully comprehensible
 - Be specific: name locations, commanders, incidents, eldritch phenomena
 - Reference Lovecraftian Mythos elements (cultists, Deep Ones, Shoggoths, Star-spawn, etc.)
+- If the orders are vague, unclear, or off-topic, NEVER ask for clarification and never reply outside the JSON. Adjudicate anyway: staff interpret vague orders in the most cautious or confused way, so results should be muted, delayed, or misdirected, with a small negative scoredelta, and the narrative should show the cost of unclear command.
 
 RESPOND AS VALID JSON ONLY (no markdown):
 {
@@ -2315,19 +2348,16 @@ RESPOND AS VALID JSON ONLY (no markdown):
   "complication": "Optional 1 sentence complication or revelation for future turns"
 }`;
 
-  const raw = await oracleFetch(3000, systemPrompt);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-  } catch (e) {
-    // Fallback parse attempt
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      parsed = JSON.parse(jsonMatch[0]);
-    } else {
-      throw new Error('Oracle returned unparseable response');
-    }
+  let parsed = null, lastRaw = '';
+  for (let attempt = 0; attempt < 3 && !parsed; attempt++) {
+    const reminder = attempt === 0 ? '' :
+      '\n\nIMPORTANT: Your previous reply could not be parsed. Reply with ONE valid JSON object only. No prose before or after, no markdown fences. Escape all quotes and line breaks inside strings.';
+    lastRaw = await oracleFetch(3000, systemPrompt + reminder);
+    parsed = parseOracleJSON(lastRaw);
+    if (!parsed) console.warn('Oracle parse failed (attempt ' + (attempt + 1) + '). Raw reply:', lastRaw);
+  }
+  if (!parsed) {
+    throw new Error('Oracle returned unparseable response: ' + String(lastRaw).slice(0, 120).replace(/\s+/g, ' '));
   }
 
   // Store in history
@@ -2350,8 +2380,8 @@ function applyStateChanges(result, playerIdx) {
   g.stability = Math.max(0, Math.min(100, g.stability + (sc.stability || 0)));
 
   const pc = result.playerChanges || {};
-  state.players[playerIdx].score = Math.max(0, Math.min(100, state.players[playerIdx].score + (pc.scoreδelta || pc.scoreδ || pc.scoreδ || pc['scoreδelta'] || pc.scoreδelta || 0)));
-  state.players[playerIdx].stability = Math.max(0, Math.min(100, state.players[playerIdx].stability + (pc.stabilitydelta || pc.stabilityδ || 0)));
+  state.players[playerIdx].score = Math.max(0, Math.min(100, state.players[playerIdx].score + (pc.scoredelta || pc.scoreDelta || pc.scoreδelta || pc.scoreδ || 0)));
+  state.players[playerIdx].stability = Math.max(0, Math.min(100, state.players[playerIdx].stability + (pc.stabilitydelta || pc.stabilityDelta || pc.stabilityδ || 0)));
 
   // Apply score delta properly
   const scoreDelta = pc.scoreδelta ?? pc.scoredelta ?? pc['score_delta'] ?? pc.scoreΔ ?? 0;
