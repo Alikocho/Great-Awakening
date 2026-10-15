@@ -1280,6 +1280,7 @@ textarea::placeholder { color: var(--dim); font-style: italic; }
     <div class="status-pill classified">Top Secret</div>
     <div id="threat-status" class="status-pill alert">Threat Level: OMEGA</div>
     <button class="map-toggle-btn" onclick="toggleMap()" id="map-btn">🗺 CRISIS MAP</button>
+    <div class="status-pill active">AI-Adjudicated</div>
   </div>
   <div style="text-align:right">
     <div id="clock">H+00:00</div>
@@ -2213,7 +2214,7 @@ async function submitOrders() {
   } catch (err) {
     console.error(err);
     document.getElementById('typing-cursor').style.display = 'none';
-    document.getElementById('adjudication-text').textContent = '[ORACLE OFFLINE — Network error. Please try again.]';
+    document.getElementById('adjudication-text').textContent = '[ORACLE OFFLINE — ' + (err && err.message ? err.message : 'Network error') + '. Please try again.]';
     document.getElementById('post-adj-buttons').style.display = 'flex';
     document.getElementById('submit-btn').disabled = false;
   }
@@ -2323,8 +2324,7 @@ RESPOND AS VALID JSON ONLY (no markdown):
     })
   });
 
-  const data = await response.json();
-  const raw = data.content[0].text;
+  const raw = await readOracleReply(response);
 
   let parsed;
   try {
@@ -2473,8 +2473,7 @@ Write a 3-4 sentence closing narrative in the style of a classified after-action
       messages: [{ role: "user", content: prompt }]
     })
   });
-  const data = await response.json();
-  return data.content[0].text;
+  return await readOracleReply(response);
 }
 
 // ===================== INIT =====================
@@ -2494,6 +2493,23 @@ playerAssignments = [
   { name: 'Player 3', powerId: '' }
 ];
 renderPlayerSlots();
+
+// ===================== ORACLE RESPONSE HANDLING =====================
+// Reads the Oracle reply robustly: surfaces API errors with their real message,
+// and picks the first text block (newer models may lead with a thinking block).
+async function readOracleReply(response) {
+  let data;
+  try { data = await response.json(); }
+  catch (e) { throw new Error('Oracle returned an unreadable response (HTTP ' + response.status + ')'); }
+  if (!response.ok || data.error || data.type === 'error') {
+    const e = data.error;
+    const msg = (e && (e.message || e.type)) || (typeof e === 'string' ? e : '') || ('HTTP ' + response.status);
+    throw new Error(msg);
+  }
+  const block = Array.isArray(data.content) ? data.content.find(b => b.type === 'text' && b.text) : null;
+  if (!block) throw new Error('Oracle reply contained no text (stop_reason: ' + (data.stop_reason || 'unknown') + ')');
+  return block.text;
+}
 
 // ===================== CRISIS MAP =====================
 
